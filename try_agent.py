@@ -133,14 +133,15 @@ class TryAgent(_Agent):
                 if abs(_angle) < abs(angle):
                     angle = _angle
                     angles = _angles
-
+        
         self.matrix_transform = self.get_matrix(self._vehicle.get_transform())
+        """
         x = self.GlobaltoLocalVehicle(self._vehicle)[0]
         end1 = self.LocaltoGlobal(np.array([x[0] + 10 + self.speed, x[1] + (10+self.speed)*float(10/17), x[2]+2, 1]))
         end2 = self.LocaltoGlobal(np.array([x[0] + 10 + self.speed, x[1] - (10+self.speed)*float(10/17), x[2]+2, 1]))
-        self._world.debug.draw_line(self._vehicle.get_location(), carla.Location(end1), life_time = 0.001)
-        self._world.debug.draw_line(self._vehicle.get_location(), carla.Location(end2), life_time = 0.001)
-
+        self._world.debug.draw_line(self._vehicle.get_location(), carla.Location(end1), life_time = 0.0001)
+        self._world.debug.draw_line(self._vehicle.get_location(), carla.Location(end2), life_time = 0.0001)
+        """
         # check possible obstacles
         vehicle_state, vehicle = self._is_vehicle_hazard(vehicle_list)
         if vehicle_state:
@@ -208,6 +209,14 @@ class TryAgent(_Agent):
     def get_location(self):
         return self._vehicle.get_location()
 
+    def check_end(self,location):
+        matrix = self.get_matrix(self._vehicle.get_transform())
+        x = np.dot(np.linalg.inv(self.matrix_transform), np.array(
+            [location.x, location.y, location.z, 1]))
+        if x[0] < 0:
+            return True
+        else:
+            return False
     def get_break(self,c,distance):
         mass = self._vehicle.get_physics_control().mass
         f = 2*((20+c*100*0.2)/distance)**2
