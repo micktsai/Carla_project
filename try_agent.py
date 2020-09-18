@@ -107,8 +107,8 @@ class TryAgent(_Agent):
         :return: carla.VehicleControl
         """
         self.matrix_transform = self.get_matrix(self._vehicle.get_transform())
-        matrix = get_matrix(self._vehicle.get_transform())
-        velocity = np.dot(np.array([1,0,0]),np.linalg.inv(matrix))
+        # matrix = get_matrix(self._vehicle.get_transform())
+        velocity = np.dot(np.array([1,0,0,0]),np.linalg.inv(self.matrix_transform))
         # is there an obstacle in front of us?
         hazard_detected = False
 
@@ -126,7 +126,7 @@ class TryAgent(_Agent):
             x = -(self._vehicle.get_location().x - walker.get_location().x)
             y = -(self._vehicle.get_location().y - walker.get_location().y)
             z = -(self._vehicle.get_location().z - walker.get_location().z)
-            _angles = np.dot(np.array([x,y,z]),matrix)
+            _angles = np.dot(np.array([x,y,z,0]),self.matrix_transform)
             _angle = _angles[1]/_angles[0]
             if _distance < self.speed or _distance < 10:
                 hazard_detected = True
@@ -284,7 +284,7 @@ class TryAgent(_Agent):
     def LocaltoGlobal(self, velocity):
         trans = np.dot(self.matrix_transform, velocity)
         return carla.Vector3D(trans[0], trans[1], trans[2])
-
+"""
 def get_matrix(transform): #local transfer to global
     rotation = transform.rotation
     c_y = np.cos(np.radians(rotation.yaw))
@@ -306,7 +306,7 @@ def get_matrix(transform): #local transfer to global
     matrix[2, 1] = -c_p*s_r
     matrix[2, 2] = c_p*c_r
     return matrix
-
+"""
 def global_to_local(transform):
     return np.inv(global_to_local(transform))
 
