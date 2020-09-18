@@ -36,8 +36,8 @@ agent_list = []
 client = carla.Client('localhost',2000)
 client.set_timeout(20.0)
 
-world = client.load_world('Town05')
-# world = client.get_world()
+# world = client.load_world('Town05')
+world = client.get_world()
 mp = world.get_map() #get the map of the current world.
 blueprint_library = world.get_blueprint_library()
 
@@ -56,9 +56,18 @@ for i in range(len(spawn_points)):
     world.debug.draw_string(spawn_points[i].location, '%s'%i, draw_shadow=False, color=carla.Color(r=255, g=0, b=0), life_time=1000.0,persistent_lines=True)
 input()
 # """
+#make pedestrian
+bp = blueprint_library.filter('walker.*')[0]
+waypoint = spawn_points[101]  # 201 202 101 100
+pedestrian = world.try_spawn_actor(bp, waypoint)
+actor_list.append(pedestrian)
+
+bp = blueprint_library.filter('walker.*')[0]
+waypoint = spawn_points[103]  # 102 103
+pedestrian = world.try_spawn_actor(bp, waypoint)
+actor_list.append(pedestrian)
 while True:
     #make a car
-    print("a")
     bp = blueprint_library.filter('model3')[0]
     bp.set_attribute('color', '0,0,0')
     waypoint = spawn_points[83] #84 end 129 130
@@ -76,7 +85,7 @@ while True:
     actor_list.append(vehicle)
     agent = TryAgent(vehicle)
     agent_list.append([vehicle, agent])
-    # ""
+    # """
     #make pedestrian
     bp = blueprint_library.filter('walker.*')[0]
     waypoint = spawn_points[101] # 201 202 101 100
@@ -87,7 +96,7 @@ while True:
     waypoint = spawn_points[103] # 102 103
     pedestrian = world.try_spawn_actor(bp, waypoint)
     actor_list.append(pedestrian)
-    # """
+    # 
 #---------------------------------Control Part------------------------------------#
 # input()
     act = True

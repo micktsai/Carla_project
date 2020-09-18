@@ -60,8 +60,10 @@ class TryAgent(_Agent):
         self._path_seperation_threshold = 0.5
         self._target_speed = target_speed
         self._grp = None
-        self.speed = 1
-        self.matrix_transform = None;
+        self.speed = 60
+        self.matrix_transform = None
+        self.last = False
+        self.walker = None
 
     def set_destination(self, location):
         """
@@ -104,9 +106,9 @@ class TryAgent(_Agent):
         Execute one step of navigation.
         :return: carla.VehicleControl
         """
-
+        self.matrix_transform = self.get_matrix(self._vehicle.get_transform())
         matrix = get_matrix(self._vehicle.get_transform())
-        velocity = np.dot(np.array([2,0,0]),np.linalg.inv(matrix))
+        velocity = np.dot(np.array([1,0,0]),np.linalg.inv(matrix))
         # is there an obstacle in front of us?
         hazard_detected = False
 
@@ -116,7 +118,6 @@ class TryAgent(_Agent):
         vehicle_list = actor_list.filter("*vehicle*")
         lights_list = actor_list.filter("*traffic_light*")
         # pedestrian_list = actor_list.filter("*pedestrian*")
-
         walker_list = actor_list.filter("*walker*")
         angle = float(10/17)
         angles = np.array([0,0,0])
@@ -127,14 +128,15 @@ class TryAgent(_Agent):
             z = -(self._vehicle.get_location().z - walker.get_location().z)
             _angles = np.dot(np.array([x,y,z]),matrix)
             _angle = _angles[1]/_angles[0]
-            if _distance < self.speed:
+            if _distance < self.speed or _distance < 10:
                 hazard_detected = True
                 distance = _distance
                 if abs(_angle) < abs(angle):
                     angle = _angle
                     angles = _angles
-        
-        self.matrix_transform = self.get_matrix(self._vehicle.get_transform())
+                    ped = np.dot(np.linalg.inv(self.matrix_transform), np.array(
+                        [walker.get_location().x, walker.get_location().y, walker.get_location().z, 1]))
+                    self.walker = np.array([walker.get_location().x, walker.get_location().y, walker.get_location().z, 1])
         """
         x = self.GlobaltoLocalVehicle(self._vehicle)[0]
         end1 = self.LocaltoGlobal(np.array([x[0] + 10 + self.speed, x[1] + (10+self.speed)*float(10/17), x[2]+2, 1]))
@@ -161,7 +163,24 @@ class TryAgent(_Agent):
             self._state = _AgentState.BLOCKED_RED_LIGHT
             hazard_detected = True
         """
-
+        if hazard_detected and abs(angle) < 0.5 and angles[0] > 0:
+            if self.speed < 15 and ped[1] != 0:
+                self.speed = self.speed
+            else:
+                self.speed = self.speed-self.get_break(self.speed, distance)
+                if self.speed < 0:
+                    self.speed = 0
+            velocity = (velocity/norm(velocity))*self.speed
+            control = carla.Vector3D(velocity[0], velocity[1], velocity[2])
+            self.last = hazard_detected
+        else:
+            if self.speed < 60:
+                self.increase_speed()
+            velocity = (velocity/norm(velocity))*self.speed
+            control = carla.Vector3D(velocity[0], velocity[1], velocity[2])
+            self.last = hazard_detected
+            self.walker = None
+        """
         if hazard_detected and self.speed >= 10 and abs(angle) < 0.3 and angles[0]>0:
             # control = self.emergency_stop()
             # if self.speed > 10:
@@ -187,6 +206,7 @@ class TryAgent(_Agent):
             velocity = (velocity/norm(velocity))*self.speed
             control = carla.Vector3D(velocity[0],velocity[1],velocity[2])
             return control
+
         else:
             if self.speed<60:
                 self.increase_speed()
@@ -196,7 +216,7 @@ class TryAgent(_Agent):
             velocity = (velocity/norm(velocity))*self.speed
             control = carla.Vector3D(velocity[0],velocity[1],velocity[2])
             # control = carla.Vector3D(0,0,0)
-        # print(self.speed)
+        # print(self.speed)"""
         return control
 
     def done(self):
@@ -210,7 +230,7 @@ class TryAgent(_Agent):
         return self._vehicle.get_location()
 
     def check_end(self,location):
-        matrix = self.get_matrix(self._vehicle.get_transform())
+        # matrix = self.get_matrix(self._vehicle.get_transform())
         x = np.dot(np.linalg.inv(self.matrix_transform), np.array(
             [location.x, location.y, location.z, 1]))
         if x[0] < 0:
@@ -218,10 +238,9 @@ class TryAgent(_Agent):
         else:
             return False
     def get_break(self,c,distance):
-        mass = self._vehicle.get_physics_control().mass
         f = 2*((20+c*100*0.2)/distance)**2
         if c>1:
-            return f/20
+            return f/200
         else:
             return 0
 
